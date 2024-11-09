@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Enhanced Parallel Coordinates Plot of Netflix Data</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div id="myDiv" style="width: 95%; height: 700px; margin: auto;"></div>
+    <script>
+        // Fetch JSON data
+        fetch("https://raw.githubusercontent.com/abhik2004/DV_A2/refs/heads/main/netflixCleanedJSON.json")
+            .then(response => response.json())
+            .then(data => {
+                const transformedData = transformData(data);
+                const filteredData = filterData(transformedData);
+                createParallelCoordinatesPlot(filteredData);
+            })
+            .catch(error => console.error("Failed to fetch JSON data:", error));
+
+        // Function to transform the data format
+        function transformData(data) {
+            const keys = Object.keys(data);
+            const numEntries = Object.keys(data[keys[0]]).length;
+
+            const transformedData = [];
+            for (let i = 0; i < numEntries; i++) {
+                let entry = {};
+                keys.forEach(key => {
+                    entry[key] = data[key][i];
+                });
+                transformedData.push(entry);
+            }
+            return transformedData;
+        }
+
+        // Function to filter data by release year and rating
+        function filterData(dataArray) {
+            // Define allowed ratings and year range
+            const allowedRatings = ["TV-MA", "TV-14", "TV-PG", "R", "PG-13"];
+            const minYear = 2000;
+            const maxYear = 2020;
+
+            return dataArray.filter(item => 
+                allowedRatings.includes(item.rating) && 
+                item.release_year >= minYear && 
+                item.release_year <= maxYear
+            );
+        }
+
+        // Function to create the parallel coordinates plot
+        function createParallelCoordinatesPlot(dataArray) {
+            // Extract properties from dataArray
+            const ratings = dataArray.map(item => item.rating);
+            const releaseYears = dataArray.map(item => parseInt(item.release_year));
+            const types = dataArray.map(item => item.type === 'Movie' ? 1 : 0);
+
+            // Convert ratings to numeric values for plotting
+            const ratingScale = { "TV-MA": 1, "TV-14": 2, "TV-PG": 3, "R": 4, "PG-13": 5 };
+            const numericRatings = ratings.map(rating => ratingScale[rating] || 0);
+
+            const trace = {
+                type: 'parcoords',
+                line: {
+                    color: releaseYears,
+                    colorscale: 'Viridis',
+                    showscale: true,
+                    cmin: 2000,
+                    cmax: 2020,
+                    colorbar: {
+                        title: 'Release Year',
+                        thickness: 15,
+                        len: 0.75,
+                    }
+                },
+                dimensions: [
+                    {
+                        range: [Math.min(...numericRatings), Math.max(...numericRatings)],
+                        label: 'Rating',
+                        values: numericRatings,
+                        tickvals: Object.values(ratingScale),
+                        ticktext: Object.keys(ratingScale),
+                        tickfont: { size: 50, color: 'black' },
+                        labelfont: { size: 50, color: 'black' }
+                    },
+                    {
+                        range: [2000, 2020],
+                        label: 'Release Year',
+                        values: releaseYears,
+                        tickvals: [2000, 2005, 2010, 2015, 2020],
+                        tickfont: { size: 100, color: 'black' },
+                        labelfont: { size: 100, color: 'black' }
+                    },
+                    {
+                        range: [0, 1],
+                        label: 'Type (0=TV Show, 1=Movie)',
+                        values: types,
+                        tickvals: [0, 1],
+                        ticktext: ['TV Show', 'Movie'],
+                        tickfont: { size: 12, color: 'black' },
+                        labelfont: { size: 14, color: 'black' }
+                    }
+                ]
+            };
+
+            const layout = {
+                title: {
+                    //text: 'Distribution of Ratings over Release Year (Movies vs. TV Shows)',
+                    font: { size: 24 },
+                    xref: 'paper',
+                    x: 0.5
+                },
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: '#f8f9fa',
+                width: 1400,
+                font: {size: 20}
+            };
+
+            Plotly.newPlot('myDiv', [trace], layout);
+        }
+    </script>
+</body>
+</html>
